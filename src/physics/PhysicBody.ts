@@ -1,12 +1,19 @@
 import * as THREE from 'three';
 
 export type Force = {
+    /**
+     * Force vector in world space
+     */
     vector: THREE.Vector3;
+    /**
+     * Force position in local space
+     */
     position: THREE.Vector3;
 };
 
 export class PhysicBody {
     private object3d: THREE.Object3D;
+    private scene: THREE.Scene;
 
     private mass: number = 1;
     private inertia: number = 1;
@@ -22,8 +29,16 @@ export class PhysicBody {
     private forces: Force[] = [];
 
     private debugLines: boolean = true;
+    private arrows: THREE.ArrowHelper[] = [];
 
-    constructor(object: THREE.Object3D, mass: number, inertia: number, centerOfMass?: THREE.Vector3) {
+    constructor(
+        scene: THREE.Scene,
+        object: THREE.Object3D,
+        mass: number,
+        inertia: number,
+        centerOfMass?: THREE.Vector3,
+    ) {
+        this.scene = scene;
         this.object3d = object;
         this.mass = mass;
         this.inertia = inertia;
@@ -39,12 +54,81 @@ export class PhysicBody {
         this.forces = [];
     }
 
+    getObject() {
+        return this.object3d;
+    }
+
+    getVelocity() {
+        return this.velocity;
+    }
+
     update(dt: number) {
+        this.updateArrows();
+
         this.updateAccel(dt);
         this.updateVelocity(dt);
         this.updateVisual(dt);
 
         // console.log('Phys:', this);
+    }
+
+    private updateArrows() {
+        if (this.debugLines) {
+            this.arrows.forEach(arr => this.scene.remove(arr));
+
+            this.arrows = this.forces.map(
+                f =>
+                    new THREE.ArrowHelper(
+                        f.vector.normalize(),
+                        this.localToWorld(f.position),
+                        f.vector.length(),
+                        0xff3333,
+                    ),
+            );
+            this.arrows.push(
+                new THREE.ArrowHelper(
+                    this.localDirToWorld(new THREE.Vector3(1, 0, 0)).normalize(),
+                    this.object3d.position,
+                    3,
+                    0x3333ff,
+                ),
+            );
+            this.arrows.push(
+                new THREE.ArrowHelper(
+                    this.localDirToWorld(new THREE.Vector3(0, 1, 0)).normalize(),
+                    this.object3d.position,
+                    3,
+                    0x3333ff,
+                ),
+            );
+            this.arrows.push(
+                new THREE.ArrowHelper(
+                    this.localDirToWorld(new THREE.Vector3(0, 0, 1)).normalize(),
+                    this.object3d.position,
+                    3,
+                    0x3333ff,
+                ),
+            );
+
+            this.arrows.push(
+                new THREE.ArrowHelper(
+                    this.acceleration.normalize(),
+                    this.object3d.position,
+                    this.acceleration.length(),
+                    0xffbb33,
+                ),
+            );
+
+            this.arrows.forEach(arr => this.scene.add(arr));
+        }
+    }
+
+    private localDirToWorld(vector: THREE.Vector3) {
+        return this.object3d.localToWorld(vector.clone()).sub(this.object3d.position);
+    }
+
+    private localToWorld(vector: THREE.Vector3) {
+        return this.object3d.localToWorld(vector.clone());
     }
 
     private updateAccel(dt: number) {
@@ -53,18 +137,18 @@ export class PhysicBody {
 
         this.forces.forEach(f => {
             this.acceleration.set(
-                this.acceleration.x + (f.vector.x / this.mass) * dt,
-                this.acceleration.y + (f.vector.y / this.mass) * dt,
-                this.acceleration.z + (f.vector.z / this.mass) * dt,
+                this.acceleration.x + f.vector.x / this.mass,
+                this.acceleration.y + f.vector.y / this.mass,
+                this.acceleration.z + f.vector.z / this.mass,
             );
 
-            const forceWorldPosition = this.object3d.localToWorld(f.position).sub(this.object3d.position);
+            const forceWorldPosition = this.localToWorld(f.position).sub(this.object3d.position);
             const distToForce = forceWorldPosition.distanceTo(this.centerOfMass);
             const distVector = forceWorldPosition.sub(this.centerOfMass);
             const forceProjectXZ = f.vector.projectOnPlane(new THREE.Vector3(0, 1, 0));
             const angleY = this.signedAngleTo(forceProjectXZ, distVector.projectOnPlane(new THREE.Vector3(0, 1, 0)));
             const forceValueY = forceProjectXZ.length() * Math.sin(angleY);
-            this.angularAccel.set(0, this.angularAccel.y + ((distToForce * forceValueY) / this.inertia) * dt, 0);
+            this.angularAccel.set(0, (distToForce * forceValueY) / this.inertia, 0);
 
             // console.log(distToForce, forceValueY, Math.round((angleY / Math.PI) * 180));
         });

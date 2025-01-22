@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { testCarModel } from '../models/testCar';
 import { wheelModel } from '../models/wheel';
 import { PhysicBody } from '../physics/PhysicBody';
+import { CarPhys } from '../physics/CarPhys';
+import { initController } from './Controller';
 
 export class World {
     private scene?: THREE.Scene;
@@ -57,15 +59,79 @@ export class World {
 
         this.scene.add(testCarGroup);
 
-        const testPhysObj = new PhysicBody(testCarGroup, 10, 3);
+        const testPhysObj = new PhysicBody(this.scene, testCarGroup, 10, 10);
+        testPhysObj.applyForce({
+            position: new THREE.Vector3(0, 0, 1),
+            vector: new THREE.Vector3(50, 0, 50),
+        });
+        // const testCarPhys = new CarPhys(testPhysObj, {
+        //     mass: 1050,
+        //     brakeTorque: 200,
+        //     maxSteerAngle: Math.PI / 5,
+        //     suspensionHardness: 1000,
+        //     suspensionLength: 0.2,
+        //     engine: {
+        //         maxTorque: 1500,
+        //         pickRPMMax: 4500,
+        //         pickRPMMin: 2100,
+        //     },
+        //     axles: [
+        //         {
+        //             axlePosition: 1.2,
+        //             axleWidth: 0.7,
+        //             isDriving: false,
+        //             maxSteerAngle: Math.PI / 5,
+        //             leftWheel: {
+        //                 friction: 0.8,
+        //                 mass: 10,
+        //                 radius: 0.3,
+        //                 rotSpeed: 0,
+        //                 steerAngle: 0,
+        //                 prevPosition: new THREE.Vector3(),
+        //             },
+        //             rightWheel: {
+        //                 friction: 0.8,
+        //                 mass: 10,
+        //                 radius: 0.3,
+        //                 rotSpeed: 0,
+        //                 steerAngle: 0,
+        //                 prevPosition: new THREE.Vector3(),
+        //             },
+        //         },
+        //         {
+        //             axlePosition: -1.2,
+        //             axleWidth: 0.7,
+        //             isDriving: true,
+        //             maxSteerAngle: 0,
+        //             leftWheel: {
+        //                 friction: 0.8,
+        //                 mass: 10,
+        //                 radius: 0.3,
+        //                 rotSpeed: 0,
+        //                 steerAngle: 0,
+        //                 prevPosition: new THREE.Vector3(),
+        //             },
+        //             rightWheel: {
+        //                 friction: 0.8,
+        //                 mass: 10,
+        //                 radius: 0.3,
+        //                 rotSpeed: 0,
+        //                 steerAngle: 0,
+        //                 prevPosition: new THREE.Vector3(),
+        //             },
+        //         },
+        //     ],
+        // });
 
-        this.camera.position.z = -4;
-        this.camera.position.y = 1.5;
+        this.camera.position.z = -5;
+        this.camera.position.y = 1.4;
         this.camera.position.x = -0.8;
         this.camera.rotateY(Math.PI);
         // this.camera.lookAt(car.position);
         // this.controls.update();
         //
+
+        // initController(testCarPhys);
 
         const loop = (time: DOMHighResTimeStamp) => {
             this.deltaTime = time - this.prevTime;
@@ -74,6 +140,7 @@ export class World {
             this.updateLoop();
 
             // test
+            // testCarPhys.update(this.deltaTime / 1000);
             testPhysObj.update(this.deltaTime / 1000);
             //
 
