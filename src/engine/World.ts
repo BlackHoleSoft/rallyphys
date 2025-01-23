@@ -4,7 +4,7 @@ import { testCarModel } from '../models/testCar';
 import { wheelModel } from '../models/wheel';
 import { PhysicBody } from '../physics/PhysicBody';
 import { CarPhys } from '../physics/CarPhys';
-import { initController } from './Controller';
+import { initController } from './controller';
 
 export class World {
     private scene?: THREE.Scene;
@@ -26,7 +26,6 @@ export class World {
 
     private updateLoop() {
         // console.log('FPS:', this.fps, this.deltaTime);
-        // this.controls?.update();
     }
 
     private init() {
@@ -42,9 +41,20 @@ export class World {
         this.sun.position.set(1, 3, 2);
         this.scene.add(this.sun);
 
-        // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
         // test
+
+        const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100, 100, 100),
+            new THREE.MeshPhysicalMaterial({
+                color: 0x666666,
+                wireframe: true,
+            }),
+        );
+        plane.rotateX(Math.PI / 2);
+        plane.position.y = -0.6;
+        this.scene.add(plane);
 
         const testCarGroup = new THREE.Group();
 
@@ -59,79 +69,73 @@ export class World {
 
         this.scene.add(testCarGroup);
 
-        const testPhysObj = new PhysicBody(this.scene, testCarGroup, 10, 10);
-        testPhysObj.applyForce({
-            position: new THREE.Vector3(0, 0, 1),
-            vector: new THREE.Vector3(50, 0, 50),
+        const testPhysObj = new PhysicBody(this.scene, testCarGroup, 1000, 1000);
+        const testCarPhys = new CarPhys(testPhysObj, {
+            mass: 1000,
+            brakeTorque: 600,
+            maxSteerAngle: Math.PI / 5,
+            suspensionHardness: 1000,
+            suspensionLength: 0.2,
+            engine: {
+                maxTorque: 300,
+                pickRPMMax: 4500,
+                pickRPMMin: 2100,
+            },
+            axles: [
+                {
+                    axlePosition: 1.2,
+                    axleWidth: 0.7,
+                    isDriving: false,
+                    isSteering: true,
+                    maxSteerAngle: Math.PI / 5,
+                    leftWheel: {
+                        friction: 0.8,
+                        mass: 10,
+                        radius: 0.3,
+                        rotSpeed: 0,
+                        prevPosition: new THREE.Vector3(),
+                    },
+                    rightWheel: {
+                        friction: 0.8,
+                        mass: 10,
+                        radius: 0.3,
+                        rotSpeed: 0,
+                        prevPosition: new THREE.Vector3(),
+                    },
+                },
+                {
+                    axlePosition: -1.2,
+                    axleWidth: 0.7,
+                    isDriving: true,
+                    isSteering: false,
+                    maxSteerAngle: 0,
+                    leftWheel: {
+                        friction: 0.8,
+                        mass: 10,
+                        radius: 0.3,
+                        rotSpeed: 0,
+                        prevPosition: new THREE.Vector3(),
+                    },
+                    rightWheel: {
+                        friction: 0.8,
+                        mass: 10,
+                        radius: 0.3,
+                        rotSpeed: 0,
+                        prevPosition: new THREE.Vector3(),
+                    },
+                },
+            ],
         });
-        // const testCarPhys = new CarPhys(testPhysObj, {
-        //     mass: 1050,
-        //     brakeTorque: 200,
-        //     maxSteerAngle: Math.PI / 5,
-        //     suspensionHardness: 1000,
-        //     suspensionLength: 0.2,
-        //     engine: {
-        //         maxTorque: 1500,
-        //         pickRPMMax: 4500,
-        //         pickRPMMin: 2100,
-        //     },
-        //     axles: [
-        //         {
-        //             axlePosition: 1.2,
-        //             axleWidth: 0.7,
-        //             isDriving: false,
-        //             maxSteerAngle: Math.PI / 5,
-        //             leftWheel: {
-        //                 friction: 0.8,
-        //                 mass: 10,
-        //                 radius: 0.3,
-        //                 rotSpeed: 0,
-        //                 steerAngle: 0,
-        //                 prevPosition: new THREE.Vector3(),
-        //             },
-        //             rightWheel: {
-        //                 friction: 0.8,
-        //                 mass: 10,
-        //                 radius: 0.3,
-        //                 rotSpeed: 0,
-        //                 steerAngle: 0,
-        //                 prevPosition: new THREE.Vector3(),
-        //             },
-        //         },
-        //         {
-        //             axlePosition: -1.2,
-        //             axleWidth: 0.7,
-        //             isDriving: true,
-        //             maxSteerAngle: 0,
-        //             leftWheel: {
-        //                 friction: 0.8,
-        //                 mass: 10,
-        //                 radius: 0.3,
-        //                 rotSpeed: 0,
-        //                 steerAngle: 0,
-        //                 prevPosition: new THREE.Vector3(),
-        //             },
-        //             rightWheel: {
-        //                 friction: 0.8,
-        //                 mass: 10,
-        //                 radius: 0.3,
-        //                 rotSpeed: 0,
-        //                 steerAngle: 0,
-        //                 prevPosition: new THREE.Vector3(),
-        //             },
-        //         },
-        //     ],
-        // });
 
         this.camera.position.z = -5;
         this.camera.position.y = 1.4;
         this.camera.position.x = -0.8;
         this.camera.rotateY(Math.PI);
         // this.camera.lookAt(car.position);
-        // this.controls.update();
+        this.controls.update();
         //
 
-        // initController(testCarPhys);
+        initController(testCarPhys);
 
         const loop = (time: DOMHighResTimeStamp) => {
             this.deltaTime = time - this.prevTime;
@@ -140,8 +144,11 @@ export class World {
             this.updateLoop();
 
             // test
-            // testCarPhys.update(this.deltaTime / 1000);
-            testPhysObj.update(this.deltaTime / 1000);
+            testCarPhys.update(this.deltaTime / 1000);
+
+            this.controls!.target = testCarGroup.position;
+            this.controls?.update();
+            // testPhysObj.update(this.deltaTime / 1000);
             //
 
             this.renderer.render(this.scene!, this.camera!);

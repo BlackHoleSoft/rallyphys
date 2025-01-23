@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+export const PHYSICS_MIN_VELOCITY = 0.001;
+
 export type Force = {
     /**
      * Force vector in world space
@@ -79,9 +81,9 @@ export class PhysicBody {
             this.arrows = this.forces.map(
                 f =>
                     new THREE.ArrowHelper(
-                        f.vector.normalize(),
+                        f.vector.clone().normalize(),
                         this.localToWorld(f.position),
-                        f.vector.length(),
+                        (f.vector.length() / this.mass) * 10,
                         0xff3333,
                     ),
             );
@@ -112,7 +114,7 @@ export class PhysicBody {
 
             this.arrows.push(
                 new THREE.ArrowHelper(
-                    this.acceleration.normalize(),
+                    this.acceleration.clone().normalize(),
                     this.object3d.position,
                     this.acceleration.length(),
                     0xffbb33,
@@ -166,6 +168,13 @@ export class PhysicBody {
             this.angularVelocity.y + this.angularAccel.y * dt,
             this.angularVelocity.z + this.angularAccel.z * dt,
         );
+
+        if (this.velocity.length() < PHYSICS_MIN_VELOCITY) {
+            this.velocity.set(0, 0, 0);
+        }
+        if (this.angularVelocity.length() < PHYSICS_MIN_VELOCITY) {
+            this.angularVelocity.set(0, 0, 0);
+        }
     }
 
     private updateVisual(dt: number) {

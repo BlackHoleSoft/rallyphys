@@ -1,4 +1,4 @@
-import { PhysicBody } from './PhysicBody';
+import { PhysicBody, PHYSICS_MIN_VELOCITY } from './PhysicBody';
 import * as THREE from 'three';
 
 export interface IMassObject {
@@ -8,7 +8,6 @@ export interface IMassObject {
 export interface ICarWheel extends IMassObject {
     radius: number;
     friction: number;
-    steerAngle: number;
     rotSpeed: number; // rad per second
     prevPosition: THREE.Vector3;
 }
@@ -20,6 +19,7 @@ export interface ICarAxle {
     axlePosition: number;
     maxSteerAngle: number;
     isDriving: boolean;
+    isSteering: boolean;
 }
 
 export interface ICarEngine {
@@ -54,51 +54,64 @@ export class CarPhys {
     private getWheelForceVector(value: number, steerAngle: number) {
         return this.physics
             .getObject()
-            .localToWorld(new THREE.Vector3(0, 0, value).applyAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle));
+            .localToWorld(new THREE.Vector3(0, 0, value).applyAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle))
+            .sub(this.physics.getObject().position);
     }
 
     private getWheelSideVector(value: number, steerAngle: number) {
         return this.physics
             .getObject()
-            .localToWorld(new THREE.Vector3(value, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle));
+            .localToWorld(new THREE.Vector3(value, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle))
+            .sub(this.physics.getObject().position);
     }
 
-    private applyWheelForces(dt: number, wheel: ICarWheel, position: THREE.Vector3, isDrive: boolean) {
+    private applyWheelForces(
+        dt: number,
+        wheel: ICarWheel,
+        position: THREE.Vector3,
+        isDrive: boolean,
+        isSteer: boolean,
+    ) {
         const carVelocity = this.physics.getVelocity().length();
 
         // torq force
         if (isDrive) {
             this.physics.applyForce({
                 position,
-                vector: this.getWheelForceVector(this.chasis.engine.maxTorque * dt * this.pedalAccel, wheel.steerAngle),
+                vector: this.getWheelForceVector(
+                    this.chasis.engine.maxTorque * this.pedalAccel,
+                    isSteer ? this.steering : 0,
+                ),
             });
         }
 
         // brake force
-        if (carVelocity > 0.01) {
-            this.physics.applyForce({
-                position,
-                vector: this.getWheelForceVector(
-                    -Math.sign(wheel.rotSpeed) * this.chasis.brakeTorque * dt * this.pedalBrake,
-                    wheel.steerAngle,
-                ),
-            });
-        }
+        // if (carVelocity > PHYSICS_MIN_VELOCITY) {
+        //     this.physics.applyForce({
+        //         position,
+        //         vector: this.getWheelForceVector(
+        //             -Math.sign(wheel.rotSpeed) * this.chasis.brakeTorque * this.pedalBrake,
+        //             isSteer ? this.steering : 0,
+        //         ),
+        //     });
+        // }
 
         const worldWheelPosition = this.physics.getObject().localToWorld(position.clone());
         const wheelDeltaVector = worldWheelPosition.sub(wheel.prevPosition);
-        const sideProjectedDelta = wheelDeltaVector.dot(this.getWheelSideVector(1, wheel.steerAngle).normalize());
+        const sideProjectedDelta = wheelDeltaVector.dot(
+            this.getWheelSideVector(1, isSteer ? this.steering : 0).normalize(),
+        );
 
         // side force
-        if (carVelocity > 0.01) {
-            this.physics.applyForce({
-                position,
-                vector: this.getWheelSideVector(
-                    -sideProjectedDelta * wheel.friction * this.chasis.mass * 10,
-                    wheel.steerAngle,
-                ),
-            });
-        }
+        // if (carVelocity > PHYSICS_MIN_VELOCITY) {
+        //     this.physics.applyForce({
+        //         position,
+        //         vector: this.getWheelSideVector(
+        //             -Math.sign(sideProjectedDelta) * wheel.friction * this.chasis.mass * 10,
+        //             isSteer ? this.steering : 0,
+        //         ),
+        //     });
+        // }
 
         wheel.prevPosition = worldWheelPosition;
     }
@@ -112,12 +125,14 @@ export class CarPhys {
                 axle.leftWheel,
                 new THREE.Vector3(-axle.axleWidth / 2, 0, axle.axlePosition),
                 axle.isDriving,
+                axle.isSteering,
             );
             this.applyWheelForces(
                 dt,
                 axle.rightWheel,
                 new THREE.Vector3(axle.axleWidth / 2, 0, axle.axlePosition),
                 axle.isDriving,
+                axle.isSteering,
             );
         });
     }
