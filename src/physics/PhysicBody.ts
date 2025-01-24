@@ -144,13 +144,13 @@ export class PhysicBody {
                 this.acceleration.z + f.vector.z / this.mass,
             );
 
-            const forceWorldPosition = this.localToWorld(f.position).sub(this.object3d.position);
-            const distToForce = forceWorldPosition.distanceTo(this.centerOfMass);
-            const distVector = forceWorldPosition.sub(this.centerOfMass);
+            const forceWorldPosition = this.localToWorld(f.position);
+            const distVector = forceWorldPosition.clone().sub(this.localToWorld(this.centerOfMass));
+            const distToForce = distVector.length();
             const forceProjectXZ = f.vector.projectOnPlane(new THREE.Vector3(0, 1, 0));
             const angleY = this.signedAngleTo(forceProjectXZ, distVector.projectOnPlane(new THREE.Vector3(0, 1, 0)));
             const forceValueY = forceProjectXZ.length() * Math.sin(angleY);
-            this.angularAccel.set(0, (distToForce * forceValueY) / this.inertia, 0);
+            this.angularAccel.set(0, this.angularAccel.y + (distToForce * forceValueY) / this.inertia, 0);
 
             // console.log(distToForce, forceValueY, Math.round((angleY / Math.PI) * 180));
         });

@@ -9,7 +9,7 @@ export interface ICarWheel extends IMassObject {
     radius: number;
     friction: number;
     rotSpeed: number; // rad per second
-    prevPosition: THREE.Vector3;
+    prevPosition?: THREE.Vector3;
 }
 
 export interface ICarAxle {
@@ -54,14 +54,14 @@ export class CarPhys {
     private getWheelForceVector(value: number, steerAngle: number) {
         return this.physics
             .getObject()
-            .localToWorld(new THREE.Vector3(0, 0, value).applyAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle))
+            .localToWorld(new THREE.Vector3(0, 0, value).applyAxisAngle(new THREE.Vector3(0, 1, 0), -steerAngle))
             .sub(this.physics.getObject().position);
     }
 
     private getWheelSideVector(value: number, steerAngle: number) {
         return this.physics
             .getObject()
-            .localToWorld(new THREE.Vector3(value, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle))
+            .localToWorld(new THREE.Vector3(value, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), -steerAngle))
             .sub(this.physics.getObject().position);
     }
 
@@ -72,12 +72,10 @@ export class CarPhys {
         isDrive: boolean,
         isSteer: boolean,
     ) {
-        const carVelocity = this.physics.getVelocity().length();
-
         // torq force
         if (isDrive) {
             this.physics.applyForce({
-                position,
+                position: position.clone(),
                 vector: this.getWheelForceVector(
                     this.chasis.engine.maxTorque * this.pedalAccel,
                     isSteer ? this.steering : 0,
@@ -97,23 +95,28 @@ export class CarPhys {
         // }
 
         const worldWheelPosition = this.physics.getObject().localToWorld(position.clone());
-        const wheelDeltaVector = worldWheelPosition.sub(wheel.prevPosition);
-        const sideProjectedDelta = wheelDeltaVector.dot(
-            this.getWheelSideVector(1, isSteer ? this.steering : 0).normalize(),
-        );
+        const wheelDeltaVector = worldWheelPosition.clone().sub(wheel.prevPosition || worldWheelPosition.clone());
+        const sideProjectedDelta = wheelDeltaVector.dot(this.getWheelSideVector(1, isSteer ? this.steering : 0));
+        const sideProjectedSpeed = sideProjectedDelta / dt;
+
+        const slipPoint = 0.4;
+        const vForce =
+            sideProjectedSpeed < slipPoint
+                ? Math.pow(sideProjectedSpeed, 2) / Math.pow(slipPoint, 2)
+                : 1 - (sideProjectedSpeed - slipPoint) * 4;
+
+        // const fValue = -Math.sign(sideProjectedSpeed) * Math.pow(sideProjectedSpeed, 2);
+        const fValue = -Math.sign(sideProjectedSpeed) * Math.min(1, Math.max(0.1, Math.pow(sideProjectedSpeed, 2)));
 
         // side force
-        // if (carVelocity > PHYSICS_MIN_VELOCITY) {
-        //     this.physics.applyForce({
-        //         position,
-        //         vector: this.getWheelSideVector(
-        //             -Math.sign(sideProjectedDelta) * wheel.friction * this.chasis.mass * 10,
-        //             isSteer ? this.steering : 0,
-        //         ),
-        //     });
-        // }
+        //if (sideProjectedSpeed > PHYSICS_MIN_VELOCITY) {
+        this.physics.applyForce({
+            position: position.clone(),
+            vector: this.getWheelSideVector(fValue * wheel.friction * wheel.mass * 10, isSteer ? this.steering : 0),
+        });
+        //}
 
-        wheel.prevPosition = worldWheelPosition;
+        wheel.prevPosition = worldWheelPosition.clone();
     }
 
     private updateForces(dt: number) {
