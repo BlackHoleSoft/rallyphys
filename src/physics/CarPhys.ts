@@ -12,12 +12,18 @@ export interface ICarWheel extends IMassObject {
     prevPosition?: THREE.Vector3;
 }
 
-export interface ICarAxle {
+export interface ICarAxleBase {
+    axleWidth: number;
+    axlePosition: number;
+    isDriving: boolean;
+    isSteering: boolean;
+}
+
+export interface ICarAxle extends ICarAxleBase {
     leftWheel: ICarWheel;
     rightWheel: ICarWheel;
     axleWidth: number;
     axlePosition: number;
-    maxSteerAngle: number;
     isDriving: boolean;
     isSteering: boolean;
 }
