@@ -45,7 +45,6 @@ export const createVehicle = (scene: THREE.Scene, options: CreateVehicleOptions)
             brakeTorque: options.brakeTorque,
             maxSteerAngle: (options.maxSteerAngle / 180) * Math.PI,
             suspensionHardness: 1000,
-            suspensionLength: 0.2,
             engine: options.engine,
             axles: options.axles.map(ax => ({
                 ...ax,
@@ -64,6 +63,7 @@ export const createVehicle = (scene: THREE.Scene, options: CreateVehicleOptions)
             })),
         },
         options.wheelModels,
+        options.carModel,
     );
 
     return {

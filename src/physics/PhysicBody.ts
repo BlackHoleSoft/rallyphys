@@ -64,6 +64,10 @@ export class PhysicBody {
         return this.velocity;
     }
 
+    getAccel() {
+        return this.acceleration;
+    }
+
     update(dt: number) {
         this.updateArrows();
 

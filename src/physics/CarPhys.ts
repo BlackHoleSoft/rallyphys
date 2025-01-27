@@ -37,7 +37,6 @@ export interface ICarEngine {
 
 export interface ICarChasis extends IMassObject {
     axles: ICarAxle[];
-    suspensionLength: number;
     suspensionHardness: number;
     engine: ICarEngine;
     brakeTorque: number;
@@ -50,16 +49,21 @@ export class CarPhys {
     private chasis: ICarChasis;
 
     private wheelModels: THREE.Object3D[];
+    private bodyModel: THREE.Object3D;
+
+    private bodyTiltX: number = 0;
+    private bodyTiltZ: number = 0;
 
     private pedalAccel: number = 0;
     private pedalBrake: number = 0;
     private steering: number = 0; // in radians
 
-    constructor(physics: PhysicBody, chasis: ICarChasis, wheels: THREE.Object3D[]) {
+    constructor(physics: PhysicBody, chasis: ICarChasis, wheels: THREE.Object3D[], body: THREE.Object3D) {
         this.physics = physics;
         this.chasis = chasis;
 
         this.wheelModels = wheels;
+        this.bodyModel = body;
     }
 
     private getWheelForceVector(value: number, steerAngle: number) {
@@ -170,8 +174,60 @@ export class CarPhys {
         });
     }
 
+    private updateBody(dt: number) {
+        const accelX = this.physics
+            .getAccel()
+            .clone()
+            .dot(
+                this.physics
+                    .getObject()
+                    .localToWorld(new THREE.Vector3(1, 0, 0))
+                    .sub(this.physics.getObject().position),
+            );
+        const accelZ = this.physics
+            .getAccel()
+            .clone()
+            .dot(
+                this.physics
+                    .getObject()
+                    .localToWorld(new THREE.Vector3(0, 0, 1))
+                    .sub(this.physics.getObject().position),
+            );
+
+        const maxTilt = 0.2;
+        const maxAccel = 3.0;
+
+        this.bodyTiltX = Math.min(maxTilt, Math.max(-maxTilt, this.bodyTiltX - (accelZ / maxAccel) * dt));
+        this.bodyTiltZ = Math.min(maxTilt, Math.max(-maxTilt, this.bodyTiltZ + (accelX / maxAccel) * dt));
+
+        this.bodyTiltX = Math.min(
+            maxTilt,
+            Math.max(-maxTilt, this.bodyTiltX - Math.sign(this.bodyTiltX) * Math.pow(this.bodyTiltX * 6, 2) * dt),
+        );
+        this.bodyTiltZ = Math.min(
+            maxTilt,
+            Math.max(-maxTilt, this.bodyTiltZ - Math.sign(this.bodyTiltZ) * Math.pow(this.bodyTiltZ * 6, 2) * dt),
+        );
+
+        // this.bodyModel.setRotationFromEuler(new THREE.Euler(this.bodyTiltX, 0, this.bodyTiltZ));
+        // this.bodyModel.setRotationFromAxisAngle(
+        //     this.physics
+        //         .getObject()
+        //         .localToWorld(new THREE.Vector3(1, 0, 0))
+        //         .sub(this.physics.getObject().position),
+        //     this.bodyTiltX,
+        // );
+
+        // console.log(this.bodyTiltX, this.bodyTiltZ);
+
+        this.bodyModel.setRotationFromEuler(new THREE.Euler(this.bodyTiltX, 0, this.bodyTiltZ, 'ZYX'));
+        // this.bodyModel.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), this.bodyTiltZ);
+        // this.bodyModel.rotateX(this.bodyTiltX - this.bodyModel.rotation.x);
+    }
+
     update(dt: number) {
         this.updateForces(dt);
+        this.updateBody(dt);
         this.updateWheels(dt);
 
         this.physics.update(dt);
