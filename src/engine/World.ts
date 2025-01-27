@@ -89,13 +89,13 @@ export class World {
                     isSteering: true,
                     maxSteerAngle: Math.PI / 5,
                     leftWheel: {
-                        friction: 0.2,
+                        friction: 0.4,
                         mass: 400,
                         radius: 0.3,
                         rotSpeed: 0,
                     },
                     rightWheel: {
-                        friction: 0.2,
+                        friction: 0.4,
                         mass: 400,
                         radius: 0.3,
                         rotSpeed: 0,
@@ -108,13 +108,13 @@ export class World {
                     isSteering: false,
                     maxSteerAngle: 0,
                     leftWheel: {
-                        friction: 0.2,
+                        friction: 0.4,
                         mass: 400,
                         radius: 0.3,
                         rotSpeed: 0,
                     },
                     rightWheel: {
-                        friction: 0.2,
+                        friction: 0.4,
                         mass: 400,
                         radius: 0.3,
                         rotSpeed: 0,

@@ -83,38 +83,37 @@ export class CarPhys {
             });
         }
 
-        // brake force
-        // if (carVelocity > PHYSICS_MIN_VELOCITY) {
-        //     this.physics.applyForce({
-        //         position,
-        //         vector: this.getWheelForceVector(
-        //             -Math.sign(wheel.rotSpeed) * this.chasis.brakeTorque * this.pedalBrake,
-        //             isSteer ? this.steering : 0,
-        //         ),
-        //     });
-        // }
-
         const worldWheelPosition = this.physics.getObject().localToWorld(position.clone());
         const wheelDeltaVector = worldWheelPosition.clone().sub(wheel.prevPosition || worldWheelPosition.clone());
         const sideProjectedDelta = wheelDeltaVector.dot(this.getWheelSideVector(1, isSteer ? this.steering : 0));
+        const dirProjectedDelta = wheelDeltaVector.dot(this.getWheelForceVector(1, isSteer ? this.steering : 0));
         const sideProjectedSpeed = sideProjectedDelta / dt;
+        const dirProjectedSpeed = dirProjectedDelta / dt;
 
-        const slipPoint = 0.4;
-        const vForce =
-            sideProjectedSpeed < slipPoint
-                ? Math.pow(sideProjectedSpeed, 2) / Math.pow(slipPoint, 2)
-                : 1 - (sideProjectedSpeed - slipPoint) * 4;
+        // brake force (not blocked)
+        if (dirProjectedSpeed > PHYSICS_MIN_VELOCITY) {
+            this.physics.applyForce({
+                position,
+                vector: this.getWheelForceVector(
+                    -Math.sign(dirProjectedSpeed) * this.chasis.brakeTorque * this.pedalBrake,
+                    isSteer ? this.steering : 0,
+                ),
+            });
+        }
 
-        // const fValue = -Math.sign(sideProjectedSpeed) * Math.pow(sideProjectedSpeed, 2);
-        const fValue = -Math.sign(sideProjectedSpeed) * Math.min(1, Math.max(0.1, Math.pow(sideProjectedSpeed, 2)));
+        const maxPoint = 0.4;
+        const slipPoint = 0.6;
+
+        const fValue =
+            -Math.sign(sideProjectedSpeed) *
+            (Math.abs(sideProjectedSpeed) > slipPoint ? 0.2 : Math.min(1, Math.pow(sideProjectedSpeed / maxPoint, 2)));
+        const sideForce = fValue * wheel.friction * wheel.mass * 10;
 
         // side force
-        //if (sideProjectedSpeed > PHYSICS_MIN_VELOCITY) {
         this.physics.applyForce({
             position: position.clone(),
-            vector: this.getWheelSideVector(fValue * wheel.friction * wheel.mass * 10, isSteer ? this.steering : 0),
+            vector: this.getWheelSideVector(sideForce, isSteer ? this.steering : 0),
         });
-        //}
 
         wheel.prevPosition = worldWheelPosition.clone();
     }
