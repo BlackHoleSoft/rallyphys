@@ -15,12 +15,16 @@ export type CreateVehicleOptions = {
     inertia: number;
     wheelRadius: number;
     brakeTorque: number;
+    bodyPosition?: THREE.Vector3;
 };
 
 export const createVehicle = (scene: THREE.Scene, options: CreateVehicleOptions) => {
     const carGroup = new THREE.Group();
 
+    const bodyPos = options.bodyPosition || new THREE.Vector3();
+
     const car = options.carModel;
+    car.position.set(bodyPos.x, bodyPos.y, bodyPos.z);
     carGroup.add(car);
 
     const wheels = options.wheelModels;
@@ -34,29 +38,33 @@ export const createVehicle = (scene: THREE.Scene, options: CreateVehicleOptions)
     const wheelsCount = options.axles.length * 2;
 
     const physicBody = new PhysicBody(scene, carGroup, options.mass, options.inertia);
-    const carPhysics = new CarPhys(physicBody, {
-        mass: options.mass,
-        brakeTorque: options.brakeTorque,
-        maxSteerAngle: (options.maxSteerAngle / 180) * Math.PI,
-        suspensionHardness: 1000,
-        suspensionLength: 0.2,
-        engine: options.engine,
-        axles: options.axles.map(ax => ({
-            ...ax,
-            leftWheel: {
-                friction: options.wheelsFriction,
-                mass: options.mass / wheelsCount,
-                radius: options.wheelRadius,
-                rotSpeed: 0,
-            },
-            rightWheel: {
-                friction: options.wheelsFriction,
-                mass: options.mass / wheelsCount,
-                radius: options.wheelRadius,
-                rotSpeed: 0,
-            },
-        })),
-    });
+    const carPhysics = new CarPhys(
+        physicBody,
+        {
+            mass: options.mass,
+            brakeTorque: options.brakeTorque,
+            maxSteerAngle: (options.maxSteerAngle / 180) * Math.PI,
+            suspensionHardness: 1000,
+            suspensionLength: 0.2,
+            engine: options.engine,
+            axles: options.axles.map(ax => ({
+                ...ax,
+                leftWheel: {
+                    friction: options.wheelsFriction,
+                    mass: options.mass / wheelsCount,
+                    radius: options.wheelRadius,
+                    rotSpeed: 0,
+                },
+                rightWheel: {
+                    friction: options.wheelsFriction,
+                    mass: options.mass / wheelsCount,
+                    radius: options.wheelRadius,
+                    rotSpeed: 0,
+                },
+            })),
+        },
+        options.wheelModels,
+    );
 
     return {
         physicBody,
@@ -94,5 +102,6 @@ export const createTestCar = (scene: THREE.Scene) => {
         wheelsFriction: 0.4,
         carModel: testCarModel(),
         wheelModels: new Array(4).fill(null).map(() => wheelModel(wheelRadius)),
+        bodyPosition: new THREE.Vector3(0, 0.7, 0),
     });
 };

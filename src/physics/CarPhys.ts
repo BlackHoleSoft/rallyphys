@@ -10,6 +10,7 @@ export interface ICarWheel extends IMassObject {
     friction: number;
     rotSpeed: number; // rad per second
     prevPosition?: THREE.Vector3;
+    xAngle?: number;
 }
 
 export interface ICarAxleBase {
@@ -48,13 +49,17 @@ export class CarPhys {
 
     private chasis: ICarChasis;
 
+    private wheelModels: THREE.Object3D[];
+
     private pedalAccel: number = 0;
     private pedalBrake: number = 0;
     private steering: number = 0; // in radians
 
-    constructor(physics: PhysicBody, chasis: ICarChasis) {
+    constructor(physics: PhysicBody, chasis: ICarChasis, wheels: THREE.Object3D[]) {
         this.physics = physics;
         this.chasis = chasis;
+
+        this.wheelModels = wheels;
     }
 
     private getWheelForceVector(value: number, steerAngle: number) {
@@ -121,6 +126,8 @@ export class CarPhys {
             vector: this.getWheelSideVector(sideForce, isSteer ? this.steering : 0),
         });
 
+        wheel.rotSpeed = dirProjectedSpeed / (2 * wheel.radius);
+
         wheel.prevPosition = worldWheelPosition.clone();
     }
 
@@ -145,8 +152,27 @@ export class CarPhys {
         });
     }
 
+    private updateWheels(dt: number) {
+        this.chasis.axles.forEach((axle, i) => {
+            // left wheel
+            let model = this.wheelModels[i * 2 + 0];
+            model.position.set(-axle.axleWidth / 2, 0 + axle.leftWheel.radius, axle.axlePosition);
+            model.setRotationFromAxisAngle(new THREE.Vector3(0, -1, 0), axle.isSteering ? this.steering : 0);
+            model.rotateX(axle.leftWheel.xAngle || 0);
+            axle.leftWheel.xAngle = (axle.leftWheel.xAngle || 0) + axle.leftWheel.rotSpeed * dt;
+
+            // right wheel
+            model = this.wheelModels[i * 2 + 1];
+            model.position.set(axle.axleWidth / 2, 0 + axle.rightWheel.radius, axle.axlePosition);
+            model.setRotationFromAxisAngle(new THREE.Vector3(0, -1, 0), axle.isSteering ? this.steering : 0);
+            model.rotateX(axle.rightWheel.xAngle || 0);
+            axle.rightWheel.xAngle = (axle.rightWheel.xAngle || 0) + axle.rightWheel.rotSpeed * dt;
+        });
+    }
+
     update(dt: number) {
         this.updateForces(dt);
+        this.updateWheels(dt);
 
         this.physics.update(dt);
 

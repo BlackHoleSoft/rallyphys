@@ -52,7 +52,6 @@ export class World {
             }),
         );
         plane.rotateX(Math.PI / 2);
-        plane.position.y = -0.6;
         this.scene.add(plane);
 
         const { carPhysics, physicBody } = createTestCar(this.scene);
