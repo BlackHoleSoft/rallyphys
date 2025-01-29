@@ -13,6 +13,7 @@ const init = () => {
     setInterval(() => {
         testUiFn({
             fps: world.fps,
+            rpm: world.getCar()?.getUiVars().rpm || 0,
         });
     }, 1000);
 };

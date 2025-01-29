@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PhysicBody } from '../../physics/PhysicBody';
-import { CarPhys, ICarAxleBase, ICarEngine } from '../../physics/CarPhys';
+import { CarPhys, ICarAxleBase, ICarEngine, ICarGearbox } from '../../physics/CarPhys';
 import { testCarModel } from '../../models/testCar';
 import { wheelModel } from '../../models/wheel';
 
@@ -9,12 +9,14 @@ export type CreateVehicleOptions = {
     wheelModels: THREE.Object3D[];
     axles: ICarAxleBase[];
     engine: ICarEngine;
+    gearbox: ICarGearbox;
     maxSteerAngle: number;
     wheelsFriction: number;
     mass: number;
     inertia: number;
     wheelRadius: number;
     brakeTorque: number;
+    suspensionHardness: number;
     bodyPosition?: THREE.Vector3;
 };
 
@@ -44,8 +46,9 @@ export const createVehicle = (scene: THREE.Scene, options: CreateVehicleOptions)
             mass: options.mass,
             brakeTorque: options.brakeTorque,
             maxSteerAngle: (options.maxSteerAngle / 180) * Math.PI,
-            suspensionHardness: 1000,
+            suspensionHardness: options.suspensionHardness,
             engine: options.engine,
+            gearbox: options.gearbox,
             axles: options.axles.map(ax => ({
                 ...ax,
                 leftWheel: {
@@ -79,6 +82,12 @@ export const createTestCar = (scene: THREE.Scene) => {
             maxTorque: 800,
             pickRPMMin: 2200,
             pickRPMMax: 4600,
+            idleRPM: 600,
+        },
+        gearbox: {
+            ratios: [3.2, 0, 3.8, 2.4, 1.0, 0.9],
+            mainRatio: 3.9,
+            shiftTime: 0.3,
         },
         axles: [
             {
@@ -99,7 +108,8 @@ export const createTestCar = (scene: THREE.Scene) => {
         brakeTorque: 700,
         maxSteerAngle: 35,
         wheelRadius,
-        wheelsFriction: 0.4,
+        wheelsFriction: 0.8,
+        suspensionHardness: 2.2,
         carModel: testCarModel(),
         wheelModels: new Array(4).fill(null).map(() => wheelModel(wheelRadius)),
         bodyPosition: new THREE.Vector3(0, 0.7, 0),

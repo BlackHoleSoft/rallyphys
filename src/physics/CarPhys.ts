@@ -33,12 +33,20 @@ export interface ICarEngine {
     maxTorque: number;
     pickRPMMin: number;
     pickRPMMax: number;
+    idleRPM: number;
+}
+
+export interface ICarGearbox {
+    ratios: number[];
+    mainRatio: number;
+    shiftTime: number;
 }
 
 export interface ICarChasis extends IMassObject {
     axles: ICarAxle[];
     suspensionHardness: number;
     engine: ICarEngine;
+    gearbox: ICarGearbox;
     brakeTorque: number;
     maxSteerAngle: number;
 }
@@ -57,6 +65,10 @@ export class CarPhys {
     private pedalAccel: number = 0;
     private pedalBrake: number = 0;
     private steering: number = 0; // in radians
+    private rpm: number = 0;
+    private gear: number = 1;
+    private isShifting: boolean = false;
+    private slipFactor: number = 0;
 
     constructor(physics: PhysicBody, chasis: ICarChasis, wheels: THREE.Object3D[], body: THREE.Object3D) {
         this.physics = physics;
@@ -64,6 +76,8 @@ export class CarPhys {
 
         this.wheelModels = wheels;
         this.bodyModel = body;
+
+        this.rpm = this.chasis.engine.idleRPM;
     }
 
     private getWheelForceVector(value: number, steerAngle: number) {
@@ -87,12 +101,20 @@ export class CarPhys {
         isDrive: boolean,
         isSteer: boolean,
     ) {
+        let isThisWheelSlip = false;
+
+        const wheelTorque = isDrive ? this.getWheelTorque() : 0;
+
         // torq force
         if (isDrive) {
+            const slipValue = Math.abs(wheelTorque) - wheel.friction * wheel.mass * 10;
+            this.slipFactor = Math.min(1, Math.max(0, this.slipFactor + slipValue * dt));
+            isThisWheelSlip = slipValue > 0;
+
             this.physics.applyForce({
                 position: position.clone(),
                 vector: this.getWheelForceVector(
-                    this.chasis.engine.maxTorque * this.pedalAccel,
+                    Math.min(wheelTorque, (1.1 - this.slipFactor) * wheel.friction * wheel.mass * 10),
                     isSteer ? this.steering : 0,
                 ),
             });
@@ -116,12 +138,14 @@ export class CarPhys {
             });
         }
 
-        const maxPoint = 0.4;
+        const maxPoint = 0.2;
         const slipPoint = 0.6;
 
         const fValue =
             -Math.sign(sideProjectedSpeed) *
-            (Math.abs(sideProjectedSpeed) > slipPoint ? 0.2 : Math.min(1, Math.pow(sideProjectedSpeed / maxPoint, 2)));
+            (Math.abs(sideProjectedSpeed) > slipPoint || isThisWheelSlip
+                ? 0.2
+                : Math.min(1, Math.pow(sideProjectedSpeed / maxPoint, 2)));
         const sideForce = fValue * wheel.friction * wheel.mass * 10;
 
         // side force
@@ -130,7 +154,11 @@ export class CarPhys {
             vector: this.getWheelSideVector(sideForce, isSteer ? this.steering : 0),
         });
 
-        wheel.rotSpeed = dirProjectedSpeed / (2 * wheel.radius);
+        const powertrainInertia = 100;
+        const groundSpeed = dirProjectedSpeed / (2 * wheel.radius);
+        wheel.rotSpeed +=
+            (groundSpeed - wheel.rotSpeed) * (1 - this.slipFactor) +
+            ((this.slipFactor * wheelTorque) / powertrainInertia) * dt;
 
         wheel.prevPosition = worldWheelPosition.clone();
     }
@@ -197,38 +225,81 @@ export class CarPhys {
         const maxTilt = 0.2;
         const maxAccel = 3.0;
 
-        this.bodyTiltX = Math.min(maxTilt, Math.max(-maxTilt, this.bodyTiltX - (accelZ / maxAccel) * dt));
-        this.bodyTiltZ = Math.min(maxTilt, Math.max(-maxTilt, this.bodyTiltZ + (accelX / maxAccel) * dt));
-
         this.bodyTiltX = Math.min(
             maxTilt,
-            Math.max(-maxTilt, this.bodyTiltX - Math.sign(this.bodyTiltX) * Math.pow(this.bodyTiltX * 6, 2) * dt),
+            Math.max(-maxTilt, this.bodyTiltX - (accelZ / maxAccel / this.chasis.suspensionHardness) * dt),
         );
         this.bodyTiltZ = Math.min(
             maxTilt,
-            Math.max(-maxTilt, this.bodyTiltZ - Math.sign(this.bodyTiltZ) * Math.pow(this.bodyTiltZ * 6, 2) * dt),
+            Math.max(-maxTilt, this.bodyTiltZ + (accelX / maxAccel / this.chasis.suspensionHardness) * dt),
         );
 
-        // this.bodyModel.setRotationFromEuler(new THREE.Euler(this.bodyTiltX, 0, this.bodyTiltZ));
-        // this.bodyModel.setRotationFromAxisAngle(
-        //     this.physics
-        //         .getObject()
-        //         .localToWorld(new THREE.Vector3(1, 0, 0))
-        //         .sub(this.physics.getObject().position),
-        //     this.bodyTiltX,
-        // );
-
-        // console.log(this.bodyTiltX, this.bodyTiltZ);
+        this.bodyTiltX = Math.min(
+            maxTilt,
+            Math.max(
+                -maxTilt,
+                this.bodyTiltX -
+                    Math.sign(this.bodyTiltX) * Math.pow(this.bodyTiltX * this.chasis.suspensionHardness * 5, 2) * dt,
+            ),
+        );
+        this.bodyTiltZ = Math.min(
+            maxTilt,
+            Math.max(
+                -maxTilt,
+                this.bodyTiltZ -
+                    Math.sign(this.bodyTiltZ) * Math.pow(this.bodyTiltZ * this.chasis.suspensionHardness * 5, 2) * dt,
+            ),
+        );
 
         this.bodyModel.setRotationFromEuler(new THREE.Euler(this.bodyTiltX, 0, this.bodyTiltZ, 'ZYX'));
-        // this.bodyModel.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), this.bodyTiltZ);
-        // this.bodyModel.rotateX(this.bodyTiltX - this.bodyModel.rotation.x);
+    }
+
+    private updateEngine(dt: number) {
+        const drivingAxles = this.chasis.axles.filter(f => f.isDriving);
+        const avgRotSpeed =
+            drivingAxles.reduce((acc, val) => acc + val.leftWheel.rotSpeed + val.rightWheel.rotSpeed, 0) /
+            drivingAxles.length /
+            2;
+
+        const engineSpeed = avgRotSpeed * this.chasis.gearbox.ratios[this.gear + 1] * this.chasis.gearbox.mainRatio;
+        this.rpm = Math.max(this.chasis.engine.idleRPM, (engineSpeed * 60) / (Math.PI * 2));
+
+        console.log('RPM:', this.rpm, this.slipFactor);
+    }
+
+    private getEngineTorque() {
+        const engineTorq =
+            this.rpm <= this.chasis.engine.pickRPMMin
+                ? this.rpm * (this.chasis.engine.maxTorque / this.chasis.engine.pickRPMMin)
+                : this.rpm >= this.chasis.engine.pickRPMMax
+                  ? this.chasis.engine.maxTorque -
+                    (this.rpm - this.chasis.engine.pickRPMMax) *
+                        (this.chasis.engine.maxTorque / this.chasis.engine.pickRPMMin)
+                  : this.chasis.engine.maxTorque;
+        return engineTorq;
+    }
+
+    private getWheelTorque() {
+        const accel = this.rpm <= this.chasis.engine.idleRPM ? 1.0 : this.pedalAccel;
+
+        const drivingAxles = this.chasis.axles.filter(f => f.isDriving);
+        const driveWheelsCount = drivingAxles.length * 2;
+        const engineBrakeTorq = this.rpm > this.chasis.engine.idleRPM ? this.chasis.engine.maxTorque * 0.05 : 0;
+
+        const engineTorq = this.getEngineTorque();
+        const gearTorq =
+            engineTorq * this.chasis.gearbox.ratios[this.gear + 1] * this.chasis.gearbox.mainRatio * accel -
+            engineBrakeTorq * (1 - accel);
+        const wheelTorq = gearTorq / driveWheelsCount;
+
+        return wheelTorq;
     }
 
     update(dt: number) {
         this.updateForces(dt);
         this.updateBody(dt);
         this.updateWheels(dt);
+        this.updateEngine(dt);
 
         this.physics.update(dt);
 
@@ -248,5 +319,11 @@ export class CarPhys {
             this.chasis.maxSteerAngle,
             Math.max(-this.chasis.maxSteerAngle, value * this.chasis.maxSteerAngle),
         );
+    }
+
+    getUiVars() {
+        return {
+            rpm: this.rpm,
+        };
     }
 }

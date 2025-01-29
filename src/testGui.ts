@@ -2,10 +2,11 @@ const uiId = 'testUi';
 
 export type TestGUIProps = {
     fps: number;
+    rpm: number;
 };
 
 export const testGUI = () => {
-    return ({ fps }: TestGUIProps) => {
+    return ({ fps, rpm }: TestGUIProps) => {
         if (!document.getElementById(uiId)) {
             const el = document.createElement('div');
             el.id = uiId;
@@ -16,6 +17,9 @@ export const testGUI = () => {
 
         if (!uiElement) return;
 
-        uiElement.innerHTML = `<span>${Math.round(fps)}</span>`;
+        uiElement.innerHTML = `
+        <span>${Math.round(fps)}</span>
+        <span>RPM:${Math.round(rpm)}</span>
+        `;
     };
 };

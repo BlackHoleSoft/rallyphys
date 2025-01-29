@@ -13,6 +13,7 @@ export class World {
     private renderer: THREE.WebGLRenderer;
     private ambient?: THREE.AmbientLight;
     private sun?: THREE.DirectionalLight;
+    private car?: CarPhys;
     private controls?: OrbitControls;
     private prevTime: number = 0;
 
@@ -23,6 +24,10 @@ export class World {
         this.renderer = renderer;
 
         this.init();
+    }
+
+    getCar() {
+        return this.car;
     }
 
     private updateLoop() {
@@ -55,6 +60,7 @@ export class World {
         this.scene.add(plane);
 
         const { carPhysics, physicBody } = createTestCar(this.scene);
+        this.car = carPhysics;
 
         this.camera.position.z = -5;
         this.camera.position.y = 1.4;
