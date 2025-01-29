@@ -86,7 +86,7 @@ export const createTestCar = (scene: THREE.Scene) => {
         },
         gearbox: {
             ratios: [3.2, 0, 3.8, 2.4, 1.0, 0.9],
-            mainRatio: 3.9,
+            mainRatio: 4.5,
             shiftTime: 0.3,
         },
         axles: [
@@ -105,7 +105,7 @@ export const createTestCar = (scene: THREE.Scene) => {
         ],
         mass: 1000,
         inertia: 950,
-        brakeTorque: 700,
+        brakeTorque: 1200,
         maxSteerAngle: 35,
         wheelRadius,
         wheelsFriction: 0.8,

@@ -62,9 +62,11 @@ export class CarPhys {
     private bodyTiltX: number = 0;
     private bodyTiltZ: number = 0;
 
+    private controlsSteering: number = 0;
     private pedalAccel: number = 0;
     private pedalBrake: number = 0;
     private steering: number = 0; // in radians
+
     private rpm: number = 0;
     private gear: number = 1;
     private isShifting: boolean = false;
@@ -262,7 +264,7 @@ export class CarPhys {
             2;
 
         const engineSpeed = avgRotSpeed * this.chasis.gearbox.ratios[this.gear + 1] * this.chasis.gearbox.mainRatio;
-        this.rpm = Math.max(this.chasis.engine.idleRPM, (engineSpeed * 60) / (Math.PI * 2));
+        this.rpm = Math.max(this.chasis.engine.idleRPM / 10, (engineSpeed * 60) / (Math.PI * 2));
 
         console.log('RPM:', this.rpm, this.slipFactor);
     }
@@ -295,7 +297,23 @@ export class CarPhys {
         return wheelTorq;
     }
 
+    private updateSteering(dt: number) {
+        const targetSteering = this.controlsSteering * this.chasis.maxSteerAngle;
+        const normalSteeringSpeed = 2;
+        const maxSpeed = 10;
+        const steeringSpeed = Math.min(
+            maxSpeed,
+            Math.pow(this.physics.getVelocity().length() / normalSteeringSpeed, 2) * maxSpeed,
+        );
+
+        this.steering = Math.min(
+            this.chasis.maxSteerAngle,
+            Math.max(-this.chasis.maxSteerAngle, this.steering + (targetSteering - this.steering) * steeringSpeed * dt),
+        );
+    }
+
     update(dt: number) {
+        this.updateSteering(dt);
         this.updateForces(dt);
         this.updateBody(dt);
         this.updateWheels(dt);
@@ -315,10 +333,7 @@ export class CarPhys {
     }
 
     setSteering(value: number) {
-        this.steering = Math.min(
-            this.chasis.maxSteerAngle,
-            Math.max(-this.chasis.maxSteerAngle, value * this.chasis.maxSteerAngle),
-        );
+        this.controlsSteering = Math.min(1, Math.max(-1, value));
     }
 
     getUiVars() {
