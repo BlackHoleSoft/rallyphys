@@ -79,15 +79,17 @@ export const createTestCar = (scene: THREE.Scene) => {
     const wheelRadius = 0.3;
     return createVehicle(scene, {
         engine: {
-            maxTorque: 800,
+            maxTorque: 200,
             pickRPMMin: 2200,
             pickRPMMax: 4600,
             idleRPM: 600,
         },
         gearbox: {
-            ratios: [3.2, 0, 3.8, 2.4, 1.0, 0.9],
+            ratios: [3.2, 0, 3.8, 2.4, 1.6, 1.0],
             mainRatio: 4.5,
             shiftTime: 0.3,
+            minRPM: 2500,
+            maxRPM: 4700,
         },
         axles: [
             {
@@ -105,7 +107,7 @@ export const createTestCar = (scene: THREE.Scene) => {
         ],
         mass: 1000,
         inertia: 950,
-        brakeTorque: 1200,
+        brakeTorque: 900,
         maxSteerAngle: 35,
         wheelRadius,
         wheelsFriction: 0.8,

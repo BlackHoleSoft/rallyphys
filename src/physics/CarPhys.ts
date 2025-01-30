@@ -40,6 +40,8 @@ export interface ICarGearbox {
     ratios: number[];
     mainRatio: number;
     shiftTime: number;
+    minRPM: number;
+    maxRPM: number;
 }
 
 export interface ICarChasis extends IMassObject {
@@ -66,9 +68,12 @@ export class CarPhys {
     private pedalAccel: number = 0;
     private pedalBrake: number = 0;
     private steering: number = 0; // in radians
+    private direction: -1 | 0 | 1 = 1;
 
     private rpm: number = 0;
     private gear: number = 1;
+    private nextGear: number = 1;
+    private shiftTime: number = 0;
     private isShifting: boolean = false;
     private slipFactor: number = 0;
 
@@ -264,9 +269,51 @@ export class CarPhys {
             2;
 
         const engineSpeed = avgRotSpeed * this.chasis.gearbox.ratios[this.gear + 1] * this.chasis.gearbox.mainRatio;
-        this.rpm = Math.max(this.chasis.engine.idleRPM / 10, (engineSpeed * 60) / (Math.PI * 2));
+        this.rpm = Math.max(this.chasis.engine.idleRPM * 0.7, (engineSpeed * 60) / (Math.PI * 2));
+    }
 
-        console.log('RPM:', this.rpm, this.slipFactor);
+    private updateGearbox(dt: number) {
+        if (this.direction === 0) {
+            this.gear = 0;
+            this.nextGear = 0;
+            return;
+        }
+
+        if (this.direction === -1) {
+            this.gear = -1;
+            this.nextGear = -1;
+            return;
+        }
+
+        if (this.direction === 1 && this.gear <= 0) {
+            this.gear = 1;
+        }
+
+        if (this.isShifting && this.shiftTime > this.chasis.gearbox.shiftTime) {
+            this.isShifting = false;
+            this.gear = this.nextGear;
+            return;
+        }
+
+        if (this.isShifting) {
+            this.shiftTime += dt;
+            this.gear = 0;
+            return;
+        }
+
+        if (this.rpm > this.chasis.gearbox.maxRPM && this.gear < this.chasis.gearbox.ratios.length - 2) {
+            this.nextGear = this.gear + 1;
+            this.isShifting = true;
+            this.shiftTime = 0;
+            return;
+        }
+
+        if (this.rpm < this.chasis.gearbox.minRPM && this.gear > 1) {
+            this.nextGear = this.gear - 1;
+            this.isShifting = true;
+            this.shiftTime = 0;
+            return;
+        }
     }
 
     private getEngineTorque() {
@@ -318,10 +365,11 @@ export class CarPhys {
         this.updateBody(dt);
         this.updateWheels(dt);
         this.updateEngine(dt);
+        this.updateGearbox(dt);
 
         this.physics.update(dt);
 
-        // console.log('CAR:', this.pedalAccel, this.pedalBrake, this.steering, this.physics.getVelocity().length());
+        console.log('CAR:', this.gear);
     }
 
     setAccel(value: number) {
@@ -339,6 +387,8 @@ export class CarPhys {
     getUiVars() {
         return {
             rpm: this.rpm,
+            gear: this.gear,
+            speed: (this.physics.getVelocity().length() * 60 * 60) / 1000,
         };
     }
 }

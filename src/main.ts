@@ -11,11 +11,14 @@ const init = () => {
 
     const testUiFn = testGUI();
     setInterval(() => {
+        const uivars = world.getCar()?.getUiVars();
         testUiFn({
             fps: world.fps,
-            rpm: world.getCar()?.getUiVars().rpm || 0,
+            rpm: uivars?.rpm || 0,
+            gear: uivars?.gear || 0,
+            speed: uivars?.speed || 0,
         });
-    }, 1000);
+    }, 300);
 };
 
 init();
