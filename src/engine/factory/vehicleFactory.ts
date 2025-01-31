@@ -84,13 +84,13 @@ export const createTestCar = (scene: THREE.Scene) => {
             maxTorque: 200,
             pickRPMMin: 2200,
             pickRPMMax: 4600,
-            idleRPM: 1200,
+            idleRPM: 1500,
         },
         gearbox: {
             ratios: [3.2, 0, 3.8, 2.4, 1.6, 1.0],
             mainRatio: 4.5,
             shiftTime: 0.3,
-            minRPM: 2500,
+            minRPM: 1800,
             maxRPM: 4700,
         },
         axles: [

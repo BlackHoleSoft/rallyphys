@@ -146,8 +146,8 @@ export class CarPhys {
             });
         }
 
-        const maxPoint = 1.5;
-        const slipPoint = 6.0;
+        const maxPoint = 2.5;
+        const slipPoint = 12.0;
 
         const fValue =
             -Math.sign(sideProjectedSpeed) *
@@ -358,8 +358,8 @@ export class CarPhys {
 
     private updateSteering(dt: number) {
         const targetSteering = this.controlsSteering * this.chasis.maxSteerAngle;
-        const normalSteeringSpeed = 2;
-        const maxSpeed = 10;
+        const normalSteeringSpeed = 1.0;
+        const maxSpeed = 5;
         const steeringSpeed = Math.min(
             maxSpeed,
             Math.pow(this.physics.getVelocity().length() / normalSteeringSpeed, 2) * maxSpeed,
