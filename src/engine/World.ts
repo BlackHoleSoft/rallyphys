@@ -48,6 +48,10 @@ export class World {
         this.scene.add(this.sun);
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enablePan = false;
+        this.controls.minDistance = 3;
+        this.controls.maxDistance = 6;
+        this.controls.enableDamping = true;
 
         const plane = new THREE.Mesh(
             new THREE.PlaneGeometry(100, 100, 100, 100),
@@ -79,7 +83,20 @@ export class World {
 
             carPhysics.update(this.deltaTime / 1000);
 
-            this.controls!.target = physicBody.getObject().position;
+            this.controls!.target = physicBody.getObject().position.clone();
+            this.controls!.target.y = 2;
+
+            // const targetCameraPos = physicBody
+            //     .getObject()
+            //     .localToWorld(new THREE.Vector3(0, 3, -6))
+            //     .sub(physicBody.getObject().position);
+            // const posDelta = targetCameraPos.sub(this.camera!.position);
+
+            // this.controls.
+            // this.camera!.position.x += (posDelta.x / 1000) * this.deltaTime;
+            // this.camera!.position.y += (posDelta.y / 1000) * this.deltaTime;
+            // this.camera!.position.z += (posDelta.z / 1000) * this.deltaTime;
+
             this.controls?.update();
 
             this.renderer.render(this.scene!, this.camera!);

@@ -16,6 +16,7 @@ export type CreateVehicleOptions = {
     inertia: number;
     wheelRadius: number;
     brakeTorque: number;
+    airFriction: number;
     suspensionHardness: number;
     bodyPosition?: THREE.Vector3;
 };
@@ -45,6 +46,7 @@ export const createVehicle = (scene: THREE.Scene, options: CreateVehicleOptions)
         {
             mass: options.mass,
             brakeTorque: options.brakeTorque,
+            airFriction: options.airFriction,
             maxSteerAngle: (options.maxSteerAngle / 180) * Math.PI,
             suspensionHardness: options.suspensionHardness,
             engine: options.engine,
@@ -82,7 +84,7 @@ export const createTestCar = (scene: THREE.Scene) => {
             maxTorque: 200,
             pickRPMMin: 2200,
             pickRPMMax: 4600,
-            idleRPM: 600,
+            idleRPM: 1200,
         },
         gearbox: {
             ratios: [3.2, 0, 3.8, 2.4, 1.6, 1.0],
@@ -107,11 +109,12 @@ export const createTestCar = (scene: THREE.Scene) => {
         ],
         mass: 1000,
         inertia: 950,
-        brakeTorque: 900,
+        brakeTorque: 1200,
         maxSteerAngle: 35,
         wheelRadius,
         wheelsFriction: 0.8,
         suspensionHardness: 2.2,
+        airFriction: 0.4,
         carModel: testCarModel(),
         wheelModels: new Array(4).fill(null).map(() => wheelModel(wheelRadius)),
         bodyPosition: new THREE.Vector3(0, 0.7, 0),

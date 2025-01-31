@@ -51,6 +51,7 @@ export interface ICarChasis extends IMassObject {
     gearbox: ICarGearbox;
     brakeTorque: number;
     maxSteerAngle: number;
+    airFriction: number;
 }
 
 export class CarPhys {
@@ -68,7 +69,7 @@ export class CarPhys {
     private pedalAccel: number = 0;
     private pedalBrake: number = 0;
     private steering: number = 0; // in radians
-    private direction: -1 | 0 | 1 = 1;
+    private direction: -1 | 0 | 1 = 0;
 
     private rpm: number = 0;
     private gear: number = 1;
@@ -145,8 +146,8 @@ export class CarPhys {
             });
         }
 
-        const maxPoint = 0.2;
-        const slipPoint = 0.6;
+        const maxPoint = 1.5;
+        const slipPoint = 6.0;
 
         const fValue =
             -Math.sign(sideProjectedSpeed) *
@@ -316,6 +317,17 @@ export class CarPhys {
         }
     }
 
+    private updateAirFriction(dt: number) {
+        const velVector = this.physics.getVelocity().clone();
+        const velocity = velVector.length();
+        const force = -1 * Math.pow(velocity, 2) * this.chasis.airFriction;
+
+        this.physics.applyForce({
+            position: new THREE.Vector3(),
+            vector: velVector.normalize().multiplyScalar(force),
+        });
+    }
+
     private getEngineTorque() {
         const engineTorq =
             this.rpm <= this.chasis.engine.pickRPMMin
@@ -329,7 +341,7 @@ export class CarPhys {
     }
 
     private getWheelTorque() {
-        const accel = this.rpm <= this.chasis.engine.idleRPM ? 1.0 : this.pedalAccel;
+        const accel = this.rpm <= this.chasis.engine.idleRPM && this.pedalAccel < 0.2 ? 0.2 : this.pedalAccel;
 
         const drivingAxles = this.chasis.axles.filter(f => f.isDriving);
         const driveWheelsCount = drivingAxles.length * 2;
@@ -362,6 +374,7 @@ export class CarPhys {
     update(dt: number) {
         this.updateSteering(dt);
         this.updateForces(dt);
+        this.updateAirFriction(dt);
         this.updateBody(dt);
         this.updateWheels(dt);
         this.updateEngine(dt);
@@ -382,6 +395,10 @@ export class CarPhys {
 
     setSteering(value: number) {
         this.controlsSteering = Math.min(1, Math.max(-1, value));
+    }
+
+    setDirection(value: -1 | 0 | 1) {
+        this.direction = value;
     }
 
     getUiVars() {

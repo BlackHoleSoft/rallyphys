@@ -14,6 +14,15 @@ export const initController = (car: CarPhys) => {
         if (e.key === 'ArrowRight') {
             car.setSteering(1);
         }
+        if (e.key === 'n') {
+            car.setDirection(0);
+        }
+        if (e.key === 'x') {
+            car.setDirection(1);
+        }
+        if (e.key === 'z') {
+            car.setDirection(-1);
+        }
     });
 
     window.addEventListener('keyup', e => {
