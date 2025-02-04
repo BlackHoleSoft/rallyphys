@@ -1,5 +1,6 @@
 import { initCanvas } from './canvas/initCanvas';
 import { World } from './engine/World';
+import { NetworkService } from './network/NetworkService';
 import './style.css';
 import { testGUI } from './testGui';
 
@@ -8,6 +9,8 @@ const init = () => {
 
     const renderer = initCanvas();
     const world = new World(renderer);
+
+    const network = new NetworkService();
 
     const testUiFn = testGUI();
     setInterval(() => {
