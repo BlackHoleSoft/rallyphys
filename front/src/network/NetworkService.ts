@@ -6,6 +6,6 @@ export class NetworkService {
     constructor() {
         this.socket = io('http://localhost:7777');
 
-        this.socket.on('connect', () => console.log('Connected!', this.socket.id));
+        this.socket.on('connect', () => console.log('Connected to server! Id:', this.socket.id));
     }
 }
